@@ -1569,6 +1569,7 @@ export interface ElectricityMeterArgs {
     power?: false | MultiplierDivisor;
     voltage?: false | MultiplierDivisor;
     energy?: false | MultiplierDivisor;
+    acFrequency?: true | false | MultiplierDivisor;
     configureReporting?: boolean;
     endpointNames?: string[];
 }
@@ -1589,6 +1590,8 @@ export function electricityMeter(args?: ElectricityMeterArgs): ModernExtend {
 
     const configureLookup = {
         haElectricalMeasurement: {
+            // Report change with every 1Hz change
+            acFrequency: {attribute: 'acFrequency', divisor: 'divisor', multiplier: 'multiplier', forced: args.acFrequency === true ? false : args.acFrequency, change: 1},
             // Report change with every 5W change
             power: {attribute: 'activePower', divisor: 'acPowerDivisor', multiplier: 'acPowerMultiplier', forced: args.power, change: 5},
             // Report change with every 0.05A change
@@ -1605,6 +1608,9 @@ export function electricityMeter(args?: ElectricityMeterArgs): ModernExtend {
         },
     };
 
+    if (args.acFrequency === undefined || args.acFrequency === false) {
+        delete configureLookup.haElectricalMeasurement.acFrequency;
+    }
     if (args.power === false) {
         delete configureLookup.haElectricalMeasurement.power;
         delete configureLookup.seMetering.power;
@@ -1615,6 +1621,7 @@ export function electricityMeter(args?: ElectricityMeterArgs): ModernExtend {
 
     if (args.cluster === 'both') {
         exposes = [
+            e.ac_frequency().withAccess(ea.STATE_GET),
             e.power().withAccess(ea.STATE_GET),
             e.voltage().withAccess(ea.STATE_GET),
             e.current().withAccess(ea.STATE_GET),
@@ -1629,7 +1636,7 @@ export function electricityMeter(args?: ElectricityMeterArgs): ModernExtend {
         toZigbee = [tz.metering_power, tz.currentsummdelivered];
         delete configureLookup.haElectricalMeasurement;
     } else if (args.cluster === 'electrical') {
-        exposes = [e.power().withAccess(ea.STATE_GET), e.voltage().withAccess(ea.STATE_GET), e.current().withAccess(ea.STATE_GET)];
+        exposes = [e.ac_frequency().withAccess(ea.STATE_GET), e.power().withAccess(ea.STATE_GET), e.voltage().withAccess(ea.STATE_GET), e.current().withAccess(ea.STATE_GET)];
         fromZigbee = [fz.electrical_measurement];
         toZigbee = [tz.electrical_measurement_power, tz.acvoltage, tz.accurrent];
         delete configureLookup.seMetering;
